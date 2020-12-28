@@ -1,9 +1,9 @@
-pragma solidity 0.8.0;
+pragma solidity ^0.7.4;
+pragma experimental ABIEncoderV2;
 
 /** SPDX-License-Identifier: MIT **/
 
 contract Token {
-
     // ERC-20 token variables and methods are uncommented because they are standard
     uint8 private _decimals;
     // this variable keeps track of proposals for voting
@@ -11,31 +11,41 @@ contract Token {
     address public bettingContract;
     address public oracleContract;
     address public proposer;
-    mapping (address => uint) private _balances;
+    mapping(address => uint256) private _balances;
     // this mapping restricts token transfers by voters so they cannot vote twice
-    mapping (address => uint32) public voteMonitor;
-    mapping (address => mapping (address => uint)) private _allowed;
+    mapping(address => uint32) public voteMonitor;
+    mapping(address => mapping(address => uint256)) private _allowed;
     string private _name;
     string private _symbol;
-    uint private _totalSupply;
-    uint private _totalAllotted;
+    uint256 private _totalSupply;
+    uint256 private _totalAllotted;
     // this monitors yes and no votes of a new proposal
-    uint public voteYes;
-    uint public voteNo;
+    uint256 public voteYes;
+    uint256 public voteNo;
     // these are the addresses of contracts and its oracle under consideration
     address[3] public proposedAddresses;
     // this parameter gives token holders 7 days to fully evaluate a betting contract and its oracle
-    uint public timer;
+    uint256 public timer;
     // this is the intitial and total supply, 10 million tokens (1e7)
     // there are 18 decimal places, as with ether
-    uint public constant MINT_AMT = 1e7 ether;
+    uint256 public constant MINT_AMT = 1e7 ether;
 
-    event Transfer(address  _from, address  _to, uint _value);
-    event Approval(address  _owner, address  _spender, uint _value);
-    event Proposal(address  _creator, address contractaddress, address oracleaddress);
-    event VoteOutcome(address contrakt, address orakle, address proposer, uint numYes, uint numNo);
+    event Transfer(address _from, address _to, uint256 _value);
+    event Approval(address _owner, address _spender, uint256 _value);
+    event Proposal(
+        address _creator,
+        address contractaddress,
+        address oracleaddress
+    );
+    event VoteOutcome(
+        address contrakt,
+        address orakle,
+        address proposer,
+        uint256 numYes,
+        uint256 numNo
+    );
 
-    constructor () {
+    constructor() {
         _balances[msg.sender] = MINT_AMT;
         // same as initial balances assigned to msg.sender
         _totalSupply = MINT_AMT;
@@ -45,13 +55,19 @@ contract Token {
         _symbol = "SET";
     }
 
-    function approve(address _spender, uint _value) external returns (bool success) {
+    function approve(address _spender, uint256 _value)
+        external
+        returns (bool success)
+    {
         _allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
     }
 
-    function transfer(address _to, uint _value) external returns (bool success) {
+    function transfer(address _to, uint256 _value)
+        external
+        returns (bool success)
+    {
         require(_balances[msg.sender] >= _value);
         // no transfers allowed for someone who has voted while the vote is being decided
         // this is novel to this ERC-20 token contract
@@ -63,8 +79,14 @@ contract Token {
         return true;
     }
 
-    function transferFrom(address _from, address _to, uint _value) external returns (bool success) {
-        require(_balances[_from] >= _value && _allowed[_from][msg.sender] >= _value);
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    ) external returns (bool success) {
+        require(
+            _balances[_from] >= _value && _allowed[_from][msg.sender] >= _value
+        );
         // no transfers for someone who has voted while the vote is being decided
         // this is novel to this ERC-20 token contract
         require(voteMonitor[_from] != votePropNumber);
@@ -92,7 +114,7 @@ contract Token {
         }
     }
 
-    function voteFromOracle(uint tokenVotes, bool isYes) external {
+    function voteFromOracle(uint256 tokenVotes, bool isYes) external {
         // can only vote if a proposal is active, in which case the proposer's tokens
         // would have some Yes votes attributed to the proposal
         require(voteYes > 0);
@@ -116,7 +138,13 @@ contract Token {
             oracleContract = proposedAddresses[1];
             _balances[proposedAddresses[2]] += _totalSupply / 100;
         }
-        emit VoteOutcome(proposedAddresses[0], proposedAddresses[1], proposedAddresses[2], voteYes, voteNo);
+        emit VoteOutcome(
+            proposedAddresses[0],
+            proposedAddresses[1],
+            proposedAddresses[2],
+            voteYes,
+            voteNo
+        );
         voteYes = 0;
         voteNo = 0;
         delete proposedAddresses;
@@ -124,7 +152,9 @@ contract Token {
         votePropNumber++;
     }
 
-    function proposeContract(address propContract, address propOracle) external {
+    function proposeContract(address propContract, address propOracle)
+        external
+    {
         // to avoid trolls sending trivial submissions just to be annoying
         // without a significant cost, trolls flourish
         require(_balances[msg.sender] >= _totalSupply / 100);
@@ -143,18 +173,21 @@ contract Token {
         voteYes = _balances[msg.sender];
         // the bond amount is 1% of the total supply, which is the minimum number of eoyTokens
         // needed to submit a proposal. Proposer gets back 2% if he succeeds, loses his 1% if fail
-        uint bondAmount = _totalSupply / 100;
+        uint256 bondAmount = _totalSupply / 100;
         // no safemath needed because above calculations ensure these cannot underflow
         _balances[msg.sender] -= bondAmount;
         emit Proposal(msg.sender, proposedAddresses[0], proposedAddresses[1]);
     }
 
-    function showProposal() external view
+    function showProposal()
+        external
+        view
         returns (
-        address contractAddress,
-        address oracleAddress,
-        uint yesvote,
-        uint novote)
+            address contractAddress,
+            address oracleAddress,
+            uint256 yesvote,
+            uint256 novote
+        )
     {
         require(voteYes > 0);
         // proposal address should have a clean verified contract to audit on the mainnet to inspect
@@ -166,15 +199,19 @@ contract Token {
     }
 
     // these are standard ERC-20 methods
-    function balanceOf(address _owner) external view returns (uint balance) {
+    function balanceOf(address _owner) external view returns (uint256 balance) {
         return _balances[_owner];
     }
 
-    function totalSupply() external view returns (uint supply) {
+    function totalSupply() external view returns (uint256 supply) {
         return _totalSupply;
     }
 
-    function allowance(address _owner, address _spender) external view returns (uint remaining) {
+    function allowance(address _owner, address _spender)
+        external
+        view
+        returns (uint256 remaining)
+    {
         return _allowed[_owner][_spender];
     }
 
@@ -189,6 +226,4 @@ contract Token {
     function decimals() external view returns (uint8) {
         return _decimals;
     }
-
-
 }
